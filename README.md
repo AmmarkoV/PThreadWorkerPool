@@ -13,5 +13,4 @@ I have also added an example code snippet, to build it use
 sudo apt-get install build-essential libpthread-stubs0-dev
 
 make
-
 ```
