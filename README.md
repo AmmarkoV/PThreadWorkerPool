@@ -2,7 +2,7 @@
 
 A header-only thread automization library to make your multithreaded-lives easier.
 
-The header is [this](https://github.com/AmmarkoV/PThreadWorkerPool/blob/main/pthreadWorkerPool.h)
+The header is [this](https://github.com/AmmarkoV/PThreadWorkerPool/blob/main/pthreadWorkerPool.h) just copy it to your project and include it, nothing else needed! :)
 
 An example code that uses the library [is this](https://github.com/AmmarkoV/PThreadWorkerPool/blob/main/example.c)
 
