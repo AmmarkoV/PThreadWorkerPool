@@ -270,7 +270,11 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
                                    
         threadsCreated += (result == 0);
      }
-
+   
+   //Sleep while threads wake up..
+   //If this sleep time is not enough a deadlock might occur, need to fix that
+   nanoSleepT(10000);
+  
    pool->numberOfThreads = threadsCreated;
    pool->initialized = (threadsCreated==numberOfThreadsToSpawn);
    return (threadsCreated==numberOfThreadsToSpawn);
