@@ -6,7 +6,7 @@ The header is [this](https://github.com/AmmarkoV/PThreadWorkerPool/blob/main/pth
 
 An example code that uses the library [is this](https://github.com/AmmarkoV/PThreadWorkerPool/blob/main/example.c)
 
-You dont need anything (other than pthreads and a C compiler ), just include the header on your code.
+You dont need anything (other than pthreads and a C compiler), just include the header on your code.
 
 I have also added an example code snippet, to build it use 
 
