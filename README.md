@@ -15,7 +15,7 @@ sudo apt-get install build-essential libpthread-stubs0-dev
 make
 ```
 
-After building it to run it use 
+After building it to test the example, use 
 
 ```
 ./example
