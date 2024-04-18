@@ -1,5 +1,5 @@
 /** @file pthreadWorkerPool.h
- *  @brief  A header-only thread automization library to make your multithreaded-lives easier. 
+ *  @brief  A header-only thread automization library to make your multithreaded-lives easier.
  *  To add to your project just copy this header to your code and don't forget to link with
  *  pthreads, for example : gcc -O3 -pthread yourProject.c -o threadsExample
  *  Repository : https://github.com/AmmarkoV/PThreadWorkerPool
@@ -19,7 +19,7 @@ extern "C"
 {
 #endif
 
-static char pthreadWorkerPoolVersion[]="0.12";
+static char pthreadWorkerPoolVersion[]="0.13";
 
 struct threadContext
 {
@@ -28,7 +28,6 @@ struct threadContext
     unsigned int threadID;
     char threadInitialized;
 };
-
 
 
 struct workerPool
@@ -208,7 +207,7 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
             // Worker threads will be waiting for this condition to be met before sending "CompleteCondition" signals.
             pool->mainThreadWaiting = 1;
             pthread_cond_wait(&pool->completeWorkCondition, &pool->completeWorkMutex);
-            // This is where partial work on the batch data coordination will happen.  
+            // This is where partial work on the batch data coordination will happen.
             // All of the worker threads will have to finish before we can start the next batch.
         }
         //fprintf(stderr,"Done Waiting!\n");
@@ -223,13 +222,16 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
 
 static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThreadsToSpawn,void *  workerFunction, void * argument)
 {
-    if (pool==0) {
+    if (pool==0)
+    {
         return 0;
     }
-    if (pool->workerPoolIDs!=0) {
+    if (pool->workerPoolIDs!=0)
+    {
         return 0;
     }
-    if (pool->workerPoolContext!=0) {
+    if (pool->workerPoolContext!=0)
+    {
         return 0;
     }
 
@@ -239,14 +241,19 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
     pool->workerPoolIDs     = (pthread_t*) malloc(sizeof(pthread_t) * numberOfThreadsToSpawn);
     pool->workerPoolContext = (struct threadContext*) malloc(sizeof(struct threadContext) * numberOfThreadsToSpawn);
 
-    if (pool->workerPoolIDs==0)     {
-        free(pool->workerPoolContext);
-        pool->workerPoolContext=0;
-        return 0;
-    }
-    if (pool->workerPoolContext==0) {
-        free(pool->workerPoolIDs);
-        pool->workerPoolIDs=0;
+    if ( (pool->workerPoolIDs==0) ||  (pool->workerPoolContext==0) )
+    {
+        fprintf(stderr,"Failed allocating worker pool resources\n");
+        if (pool->workerPoolContext!=0)
+        {
+          free(pool->workerPoolContext);
+          pool->workerPoolContext=0;
+        }
+        if (pool->workerPoolIDs!=0)
+        {
+          free(pool->workerPoolIDs);
+          pool->workerPoolIDs=0;
+        }
         return 0;
     }
 
@@ -293,18 +300,18 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
       unsigned int threadsThatAreReady=0;
       for (unsigned int i=0; i<threadsCreated; i++)
       {
-          threadsThatAreReady+=pool->workerPoolContext[i].threadInitialized ;
+          threadsThatAreReady+=pool->workerPoolContext[i].threadInitialized;
       }
-      
+
       if (threadsThatAreReady==threadsCreated)
       {
           break;
       }
     }
     fprintf(stderr," done \n");
-      
+
     pool->numberOfThreads = threadsCreated;
-    pool->initialized = (threadsCreated==numberOfThreadsToSpawn);
+    pool->initialized     = (threadsCreated==numberOfThreadsToSpawn);
     return (threadsCreated==numberOfThreadsToSpawn);
 }
 
@@ -312,6 +319,9 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
 
 static int threadpoolDestroy(struct workerPool *pool)
 {
+    if ( (pool!=0) && (pool->workerPoolIDs!=0) && (pool->workerPoolContext!=0) )
+    {
+
     pthread_mutex_lock(&pool->startWorkMutex);
     // Set the conditions to stop all threads.
     pool->work = 0;
@@ -336,6 +346,9 @@ static int threadpoolDestroy(struct workerPool *pool)
     free(pool->workerPoolIDs);
     pool->workerPoolIDs=0;
     return 1;
+    }
+
+  return 0;
 }
 
 
@@ -345,3 +358,5 @@ static int threadpoolDestroy(struct workerPool *pool)
 #endif
 
 #endif // PTHREADWORKERPOOL_H_INCLUDED
+
+
