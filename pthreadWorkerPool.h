@@ -19,8 +19,12 @@ extern "C"
 {
 #endif
 
-static char pthreadWorkerPoolVersion[]="0.13";
+static const char pthreadWorkerPoolVersion[]="0.14";
 
+
+/**
+ * @brief Structure representing a thread context.
+ */
 struct threadContext
 {
     void * argumentToPass;
@@ -30,6 +34,9 @@ struct threadContext
 };
 
 
+/**
+ * @brief Structure representing a worker pool.
+ */
 struct workerPool
 {
     char initialized;
@@ -59,6 +66,12 @@ struct workerPool
 
 
 #include <time.h>
+
+/**
+ * @brief Function for sleeping for a specified amount of time.
+ * @param nanoseconds The number of nanoseconds to sleep.
+ * @return Returns 0 on success, -1 on failure.
+ */
 static int nanoSleepT(long nanoseconds)
 {
     struct timespec req, rem;
@@ -72,6 +85,11 @@ static int nanoSleepT(long nanoseconds)
 
 
 #include <sched.h>
+
+/**
+ * @brief Function for setting the real-time priority of a thread.
+ * @return Returns 0 on success, -1 on failure.
+ */
 static int set_realtime_priority()
 {
     int ret;
@@ -117,7 +135,11 @@ static int set_realtime_priority()
 }
 
 
-
+/**
+ * @brief Function for initializing a worker thread and waiting for start signal.
+ * @param ctx Pointer to the thread context.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolWorkerInitialWait(struct threadContext * ctx)
 {
     ctx->threadInitialized = 1;
@@ -127,7 +149,11 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
 }
 
 
-
+/**
+ * @brief Function for checking the loop condition of a worker thread.
+ * @param ctx Pointer to the thread context.
+ * @return Returns 1 if the condition is met, 0 otherwise.
+ */
 static int threadpoolWorkerLoopCondition(struct threadContext * ctx)
 {
     if (ctx->pool->work)
@@ -143,7 +169,11 @@ static int threadpoolWorkerLoopCondition(struct threadContext * ctx)
 }
 
 
-
+/**
+ * @brief Function for handling the end of a worker thread's loop.
+ * @param ctx Pointer to the thread context.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 {
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
@@ -173,7 +203,11 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 }
 
 
-
+/**
+ * @brief Function for preparing work for worker threads by the main thread.
+ * @param pool Pointer to the worker pool.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
 {
     if (pool->initialized)
@@ -185,7 +219,11 @@ static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
 }
 
 
-
+/**
+ * @brief Function for waiting for worker threads to finish by the main thread.
+ * @param pool Pointer to the worker pool.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
 {
     if (pool->initialized)
@@ -219,7 +257,14 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
 }
 
 
-
+/**
+ * @brief Function for creating a worker pool.
+ * @param pool Pointer to the worker pool to be created.
+ * @param numberOfThreadsToSpawn Number of threads to spawn in the pool.
+ * @param workerFunction Pointer to the worker function.
+ * @param argument Argument to pass to the worker function.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThreadsToSpawn,void *  workerFunction, void * argument)
 {
     if (pool==0)
@@ -317,6 +362,11 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
 
 
 
+/**
+ * @brief Function for destroying a worker pool.
+ * @param pool Pointer to the worker pool to be destroyed.
+ * @return Returns 1 on success, 0 on failure.
+ */
 static int threadpoolDestroy(struct workerPool *pool)
 {
     if ( (pool!=0) && (pool->workerPoolIDs!=0) && (pool->workerPoolContext!=0) )
