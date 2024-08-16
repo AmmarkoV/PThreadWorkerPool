@@ -19,7 +19,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.14";
+static const char pthreadWorkerPoolVersion[]="0.15";
 
 
 /**
@@ -180,6 +180,7 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
     while ( 1 )
     {
+        usleep(100); //Make this spin slower..
         pthread_mutex_lock(&ctx->pool->completeWorkMutex);
         if ( ctx->pool->mainThreadWaiting )
         {
