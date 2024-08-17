@@ -19,7 +19,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.15";
+static const char pthreadWorkerPoolVersion[]="0.16";
 
 
 /**
@@ -64,8 +64,10 @@ struct workerPool
 };
 
 
-
+#include <unistd.h>
 #include <time.h>
+
+#define SPIN_SLEEP_TIME_MICROSECONDS 100
 
 /**
  * @brief Function for sleeping for a specified amount of time.
@@ -180,7 +182,7 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
     while ( 1 )
     {
-        usleep(100); //Make this spin slower..
+        usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
         pthread_mutex_lock(&ctx->pool->completeWorkMutex);
         if ( ctx->pool->mainThreadWaiting )
         {
@@ -342,7 +344,8 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
     while (1)
     {
       fprintf(stderr,".");
-      nanoSleepT(1000);
+      //nanoSleepT(1000);
+      usleep(SPIN_SLEEP_TIME_MICROSECONDS);
       unsigned int threadsThatAreReady=0;
       for (unsigned int i=0; i<threadsCreated; i++)
       {
