@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
             //Alternatively the next function has a hard timeout limit, if the wait for a thread takes more time
             //the library will abort, terminating the execution of the process to avoid deadlocks..
             //the given limit should be large and this function exists to prevent deadlocks in a very noticeable way
-            //threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,1);
+            //threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,10); //wait for up to 10 sec before stopping program execution
 
             fprintf(stdout,"Main thread collecting results..!\n");
             for (contextID=0; contextID<NUMBER_OF_WORKER_THREADS; contextID++)
