@@ -40,6 +40,7 @@ struct threadContext
  */
 struct workerPool
 {
+    //---------------------
     volatile char initialized;
     volatile char work;
     volatile char mainThreadWaiting;
@@ -109,7 +110,8 @@ static int set_realtime_priority()
 
     // Attempt to set thread real-time priority to the SCHED_FIFO policy
     ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
-    if (ret != 0) {
+    if (ret != 0) 
+    {
         // Print the error
         fprintf(stderr,"Failed setting thread realtime priority\n");
         return 0;
@@ -118,13 +120,15 @@ static int set_realtime_priority()
     // Now verify the change in thread priority
     int policy = 0;
     ret = pthread_getschedparam(this_thread, &policy, &params);
-    if (ret != 0) {
+    if (ret != 0) 
+    {
         fprintf(stderr,"Couldn't retrieve real-time scheduling paramers\n");
         return 0;
     }
 
     // Check the correct policy was applied
-    if(policy != SCHED_FIFO) {
+    if(policy != SCHED_FIFO) 
+    {
         fprintf(stderr,"Scheduling is NOT SCHED_FIFO!\n");
     }
     else
@@ -314,11 +318,13 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
         return 0;
     }
 
+    //--------------------------------------------------
     pool->work = 0;
     pool->mainThreadWaiting = 0;
     pool->numberOfThreads = 0;
     pool->workerPoolIDs     = (pthread_t*) malloc(sizeof(pthread_t) * numberOfThreadsToSpawn);
     pool->workerPoolContext = (struct threadContext*) malloc(sizeof(struct threadContext) * numberOfThreadsToSpawn);
+    //--------------------------------------------------
 
     if ( (pool->workerPoolIDs==0) ||  (pool->workerPoolContext==0) )
     {
@@ -336,13 +342,12 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
         return 0;
     }
 
-
+    //--------------------------------------------------
     pthread_cond_init(&pool->startWorkCondition,0);
     pthread_mutex_init(&pool->startWorkMutex,0);
     pthread_cond_init(&pool->completeWorkCondition,0);
     pthread_mutex_init(&pool->completeWorkMutex,0);
-
-
+    //--------------------------------------------------
     pthread_attr_init(&pool->initializationAttribute);
     pthread_attr_setdetachstate(&pool->initializationAttribute,PTHREAD_CREATE_JOINABLE);
 
