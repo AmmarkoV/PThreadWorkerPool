@@ -40,22 +40,22 @@ struct threadContext
  */
 struct workerPool
 {
-    char initialized;
-    char work;
-    char mainThreadWaiting;
+    volatile char initialized;
+    volatile char work;
+    volatile char mainThreadWaiting;
     //---------------------
-    int completedWorkNumber;
+    volatile int completedWorkNumber;
     //---------------------
     pthread_attr_t initializationAttribute;
 
     //Start conditions..
     pthread_mutex_t startWorkMutex;
-    pthread_cond_t startWorkCondition;
+    pthread_cond_t  startWorkCondition;
     //---------------------
 
     //End conditions..
     pthread_mutex_t completeWorkMutex;
-    pthread_cond_t completeWorkCondition;
+    pthread_cond_t  completeWorkCondition;
     //---------------------
 
     unsigned int numberOfThreads;
