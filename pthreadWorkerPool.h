@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.22";
+static const char pthreadWorkerPoolVersion[]="0.24";
 
 
 /**
@@ -110,7 +110,7 @@ static int set_realtime_priority()
 
     // Attempt to set thread real-time priority to the SCHED_FIFO policy
     ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
-    if (ret != 0) 
+    if (ret != 0)
     {
         // Print the error
         fprintf(stderr,"Failed setting thread realtime priority\n");
@@ -120,14 +120,14 @@ static int set_realtime_priority()
     // Now verify the change in thread priority
     int policy = 0;
     ret = pthread_getschedparam(this_thread, &policy, &params);
-    if (ret != 0) 
+    if (ret != 0)
     {
         fprintf(stderr,"Couldn't retrieve real-time scheduling paramers\n");
         return 0;
     }
 
     // Check the correct policy was applied
-    if(policy != SCHED_FIFO) 
+    if(policy != SCHED_FIFO)
     {
         fprintf(stderr,"Scheduling is NOT SCHED_FIFO!\n");
     }
@@ -149,11 +149,15 @@ static int set_realtime_priority()
  */
 static int threadpoolWorkerInitialWait(struct threadContext * ctx)
 {
-    ctx->threadInitialized = 1;
-    pthread_mutex_lock(&ctx->pool->startWorkMutex);
-    usleep(SPIN_SLEEP_TIME_MICROSECONDS);
-    pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
-    return 1;
+    if (ctx!=0)
+    {
+     ctx->threadInitialized = 1;
+     pthread_mutex_lock(&ctx->pool->startWorkMutex);
+     usleep(SPIN_SLEEP_TIME_MICROSECONDS);
+     pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
+     return 1;
+    }
+    return 0;
 }
 
 
@@ -164,6 +168,8 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
  */
 static int threadpoolWorkerLoopCondition(struct threadContext * ctx)
 {
+    if (ctx==0) { return 0; }
+
     if (ctx->pool->work)
     {
         pthread_mutex_unlock(&ctx->pool->startWorkMutex);
@@ -184,6 +190,8 @@ static int threadpoolWorkerLoopCondition(struct threadContext * ctx)
  */
 static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 {
+    if (ctx==0) { return 0; }
+
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
     // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
     while ( 1 )
@@ -219,6 +227,8 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
  */
 static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
 {
+    if (pool==0) { return 0; }
+
     if (pool->initialized)
     {
         pthread_mutex_lock(&pool->startWorkMutex);
@@ -236,6 +246,8 @@ static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
  */
 static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct workerPool * pool, int timeoutSeconds)
 {
+    if (pool==0) { return 0; }
+
     if (pool->initialized)
     {
         pool->work=1;
@@ -250,7 +262,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         //All parallel threads are running and now we must wait until they are done and gather their output
 
 
-         
+
          struct timespec ts;
          //If we are using a timeout check the time and
          //set the deadline for the correct amount of seconds
@@ -276,7 +288,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
             {
              //we wait for a signal up to the deadline time, if we timeout we will abort!
              int ret = pthread_cond_timedwait(&pool->completeWorkCondition, &pool->completeWorkMutex, &ts);
-             if (ret == ETIMEDOUT) 
+             if (ret == ETIMEDOUT)
                      {
                        fprintf(stderr, "\n\npthreadWorkerPool: Timeout occurred @ %u/%u, a thread may be stuck.\n", numberOfWorkerThreadsToWaitFor, pool->numberOfThreads);
                         // Handle the stuck thread (e.g., attempt to cancel or exit).
@@ -297,7 +309,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
 
 
 /**
- * @brief Function for waiting worker for threads to finish their task by the main thread. This function will wait forever if something goes wrong with workers 
+ * @brief Function for waiting worker for threads to finish their task by the main thread. This function will wait forever if something goes wrong with workers
  * @param pool Pointer to the worker pool.
  * @return Returns 1 on success, 0 on failure.
  */
@@ -421,7 +433,7 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
  */
 static int threadpoolDestroy(struct workerPool *pool)
 {
-    if ( (pool!=0) && (pool->workerPoolIDs!=0) && (pool->workerPoolContext!=0) )
+   if ( (pool!=0) && (pool->workerPoolIDs!=0) && (pool->workerPoolContext!=0) )
     {
 
     pthread_mutex_lock(&pool->startWorkMutex);
