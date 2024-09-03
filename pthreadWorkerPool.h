@@ -249,6 +249,20 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         //At this point of the code for the particular iteration all single threaded chains have been executed
         //All parallel threads are running and now we must wait until they are done and gather their output
 
+
+         
+         struct timespec ts;
+         //If we are using a timeout check the time and
+         //set the deadline for the correct amount of seconds
+         //or else don't bother getting the time
+         if (timeoutSeconds!=0)
+         {
+          clock_gettime(CLOCK_REALTIME, &ts);
+          ts.tv_sec += timeoutSeconds;
+         }
+
+
+
         //We now wait for "numberOfWorkerThreads" worker threads to finish
         for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
         {
@@ -260,9 +274,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
             // All of the worker threads will have to finish before we can start the next batch.
             if (timeoutSeconds!=0)
             {
-             struct timespec ts;
-             clock_gettime(CLOCK_REALTIME, &ts);
-             ts.tv_sec += timeoutSeconds;
+             //we wait for a signal up to the deadline time, if we timeout we will abort!
              int ret = pthread_cond_timedwait(&pool->completeWorkCondition, &pool->completeWorkMutex, &ts);
              if (ret == ETIMEDOUT) 
                      {
