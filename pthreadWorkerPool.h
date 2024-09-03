@@ -19,7 +19,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.16";
+static const char pthreadWorkerPoolVersion[]="0.18";
 
 
 /**
@@ -146,6 +146,7 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
 {
     ctx->threadInitialized = 1;
     pthread_mutex_lock(&ctx->pool->startWorkMutex);
+    usleep(SPIN_SLEEP_TIME_MICROSECONDS);
     pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
     return 1;
 }
@@ -234,9 +235,10 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
         pool->work=1;
 
         //Signal that we can start and wait for finish...
-        pthread_mutex_lock(&pool->completeWorkMutex); //Make sure worker threads wont fall through after completion
+        pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
         pthread_cond_broadcast(&pool->startWorkCondition); //Broadcast starting condition
-        pthread_mutex_unlock(&pool->startWorkMutex); //Now start worker threads
+        usleep(SPIN_SLEEP_TIME_MICROSECONDS);
+        pthread_mutex_unlock(&pool->startWorkMutex);       //Now start worker threads
 
         //At this point of the code for the particular iteration all single threaded chains have been executed
         //All parallel threads are running and now we must wait until they are done and gather their output
