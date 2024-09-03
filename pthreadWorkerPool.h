@@ -290,7 +290,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
              int ret = pthread_cond_timedwait(&pool->completeWorkCondition, &pool->completeWorkMutex, &ts);
              if (ret == ETIMEDOUT)
                      {
-                       fprintf(stderr, "\n\npthreadWorkerPool: Timeout occurred @ %u/%u, a thread may be stuck.\n", numberOfWorkerThreadsToWaitFor, pool->numberOfThreads);
+                        fprintf(stderr, "\n\npthreadWorkerPool: Timeout (%u sec) occurred @ %u/%u, a thread may be stuck.\n", timeoutSeconds, numberOfWorkerThreadsToWaitFor, pool->numberOfThreads);
                         // Handle the stuck thread (e.g., attempt to cancel or exit).
                         abort();// We just abort to make sure this becomes a visible failure
                      }
