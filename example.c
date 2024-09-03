@@ -6,7 +6,7 @@
  */
 
 //Can also be compiled using :
-//gcc  -O3 example.c -pthread -lm -o example
+//gcc -O3 example.c -pthread -lm -o example
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,12 +26,13 @@ struct workerThreadContext
 
 void *workerThread(void * arg)
 {
-    //We are a thread so lets retrieve our variables..
+    //We are a worker thread so we need to retrieve our variables ..
+    //---------------------------------------------------------------
     struct threadContext * ptr = (struct threadContext *) arg;
     fprintf(stdout,"Thread-%u: Started..!\n",ptr->threadID);
     struct workerThreadContext * contextArray = (struct workerThreadContext *) ptr->argumentToPass;
     struct workerThreadContext * ctx = &contextArray[ptr->threadID];
-    //----------------------------------------------------
+    //---------------------------------------------------------------
 
     threadpoolWorkerInitialWait(ptr);
     unsigned int i;
@@ -59,7 +60,7 @@ void *workerThread(void * arg)
 int main(int argc, char *argv[])
 {
     //Our worker pool ready and clean
-    struct workerPool pool= {0};
+    struct workerPool pool={0};
 
     //We also create one context to be supplied for each thread..
     struct workerThreadContext context[NUMBER_OF_WORKER_THREADS]= {0};
@@ -81,7 +82,14 @@ int main(int argc, char *argv[])
                 context[contextID].computationInput = (float)rand()/(float)(RAND_MAX/1000);
             }
 
+            //This function will wait forever for the threads to complete their work
+            //it is equivalent to threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,0);
             threadpoolMainThreadWaitForWorkersToFinish(&pool);
+             
+            //Alternatively the next function has a hard timeout limit, if the wait for a thread takes more time
+            //the library will abort, terminating the execution of the process to avoid deadlocks..
+            //the given limit should be large and this function exists to prevent deadlocks in a very noticeable way
+            //threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,1);
 
             fprintf(stdout,"Main thread collecting results..!\n");
             for (contextID=0; contextID<NUMBER_OF_WORKER_THREADS; contextID++)

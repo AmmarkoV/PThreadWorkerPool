@@ -13,13 +13,14 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.18";
+static const char pthreadWorkerPoolVersion[]="0.22";
 
 
 /**
@@ -224,11 +225,12 @@ static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
 
 
 /**
- * @brief Function for waiting for worker threads to finish by the main thread.
+ * @brief Function for waiting worker for threads to finish their task by the main thread.
  * @param pool Pointer to the worker pool.
+ * @param timeout Number of seconds to wait for threads to complete their work, otherwise abort process as stuck (0 = wait forever).
  * @return Returns 1 on success, 0 on failure.
  */
-static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
+static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct workerPool * pool, int timeoutSeconds)
 {
     if (pool->initialized)
     {
@@ -249,9 +251,25 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
             // Before entering a waiting state, set "MainThreadWaiting" to "TRUE" while we still have a lock on the "CompleteMutex".
             // Worker threads will be waiting for this condition to be met before sending "CompleteCondition" signals.
             pool->mainThreadWaiting = 1;
-            pthread_cond_wait(&pool->completeWorkCondition, &pool->completeWorkMutex);
+
             // This is where partial work on the batch data coordination will happen.
             // All of the worker threads will have to finish before we can start the next batch.
+            if (timeoutSeconds!=0)
+            {
+             struct timespec ts;
+             clock_gettime(CLOCK_REALTIME, &ts);
+             ts.tv_sec += timeoutSeconds;
+             int ret = pthread_cond_timedwait(&pool->completeWorkCondition, &pool->completeWorkMutex, &ts);
+             if (ret == ETIMEDOUT) 
+                     {
+                       fprintf(stderr, "\n\npthreadWorkerPool: Timeout occurred @ %u/%u, a thread may be stuck.\n", numberOfWorkerThreadsToWaitFor, pool->numberOfThreads);
+                        // Handle the stuck thread (e.g., attempt to cancel or exit).
+                        abort();// We just abort to make sure this becomes a visible failure
+                     }
+            } else
+            {
+             pthread_cond_wait(&pool->completeWorkCondition, &pool->completeWorkMutex);
+            }
         }
         //fprintf(stderr,"Done Waiting!\n");
         pthread_mutex_unlock(&pool->completeWorkMutex);
@@ -259,6 +277,17 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
         return 1;
     }
     return 0;
+}
+
+
+/**
+ * @brief Function for waiting worker for threads to finish their task by the main thread. This function will wait forever if something goes wrong with workers 
+ * @param pool Pointer to the worker pool.
+ * @return Returns 1 on success, 0 on failure.
+ */
+static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
+{
+  return threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(pool,0);
 }
 
 
