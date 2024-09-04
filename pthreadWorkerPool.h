@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.24";
+static const char pthreadWorkerPoolVersion[]="0.26";
 
 
 /**
@@ -153,7 +153,7 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
     {
      ctx->threadInitialized = 1;
      pthread_mutex_lock(&ctx->pool->startWorkMutex);
-     usleep(SPIN_SLEEP_TIME_MICROSECONDS);
+     //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
      pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
      return 1;
     }
@@ -255,7 +255,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         //Signal that we can start and wait for finish...
         pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
         pthread_cond_broadcast(&pool->startWorkCondition); //Broadcast starting condition
-        usleep(SPIN_SLEEP_TIME_MICROSECONDS);
+        //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
         pthread_mutex_unlock(&pool->startWorkMutex);       //Now start worker threads
 
         //At this point of the code for the particular iteration all single threaded chains have been executed
@@ -403,7 +403,6 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
     fprintf(stderr,"Waiting for threads to start : ");
     while (1)
     {
-      fprintf(stderr,".");
       //nanoSleepT(1000);
       usleep(SPIN_SLEEP_TIME_MICROSECONDS);
       unsigned int threadsThatAreReady=0;
@@ -415,6 +414,9 @@ static int threadpoolCreate(struct workerPool * pool,unsigned int numberOfThread
       if (threadsThatAreReady==threadsCreated)
       {
           break;
+      } else
+      {
+         fprintf(stderr,".");
       }
     }
     fprintf(stderr," done \n");
@@ -472,5 +474,6 @@ static int threadpoolDestroy(struct workerPool *pool)
 #endif
 
 #endif // PTHREADWORKERPOOL_H_INCLUDED
+
 
 
