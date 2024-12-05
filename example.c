@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include "pthreadWorkerPool.h"
 
-#define NUMBER_OF_WORKER_THREADS 30
+#define NUMBER_OF_WORKER_THREADS 4
 #define NUMBER_OF_ITERATIONS 4
 
 struct workerThreadContext

@@ -15,7 +15,7 @@ clean:
 	rm -f $(TARGETS) $(OBJ)
 
 $(OBJ): %.o : %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CCFLAGS)
+	$(CC) -c -D_GNU_SOURCE -o $@ $< $(CCFLAGS)
 
 $(TARGETS): % : $(filter-out $(MAINS), $(OBJ)) %.o
-	$(CC) -o $@ $(LIBS) $^ $(CCFLAGS) $(LDFLAGS)
+	$(CC) -D_GNU_SOURCE -o $@ $(LIBS) $^ $(CCFLAGS) $(LDFLAGS)

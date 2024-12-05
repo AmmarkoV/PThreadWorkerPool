@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.26";
+static const char pthreadWorkerPoolVersion[]="0.27";
 
 
 /**
@@ -89,6 +89,25 @@ static int nanoSleepT(long nanoseconds)
 
 
 #include <sched.h>
+static int stick_this_thread_to_core(int core_id)
+{
+   #if _GNU_SOURCE
+   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+   int core_id_mod_cores = core_id % num_cores;
+
+   //if (core_id < 0 || core_id >= num_cores)
+   //   return EINVAL;
+
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+   CPU_SET(core_id, &cpuset);
+
+   pthread_t current_thread = pthread_self();
+   return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+   #else
+    fprintf("Cannot stick thread to core without GNU source extensions during compilation\n");
+   #endif
+}
 
 /**
  * @brief Function for setting the real-time priority of a thread.
