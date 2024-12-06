@@ -276,9 +276,6 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     pthread_cond_signal(&ctx->pool->completeWorkCondition);
 
 
-    //pthread_mutex_unlock(&ctx->pool->completeWorkMutex); ??
-
-
     unsigned long workerLoopBlockStartTime = GetTickCountMicrosecondsT();
 
     // Wait for the Main thread to send us the next "StartWorkCondition" broadcast.
@@ -287,7 +284,7 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 
     unsigned long workerLoopBlockFinishTime = GetTickCountMicrosecondsT();
 
-    fprintf(stderr,"Thread %u : Lag:%lu \n",ctx->threadID , workerLoopBlockFinishTime-workerLoopBlockStartTime);
+    fprintf(stderr,"Thread %u / Lag:%lu μsec \n",ctx->threadID , workerLoopBlockFinishTime-workerLoopBlockStartTime);
 
     return 1;
 }
@@ -325,7 +322,6 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
     {
         pool->work=1;
 
-
         //We consider all workers as active from now on!
         pool->activeWorkers = pool->numberOfThreads;
 
@@ -348,11 +344,14 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
           ts.tv_sec += timeoutSeconds;
          }
 
+       //
+       pool->mainThreadWaiting = 1;
 
         //We now wait for "numberOfWorkerThreads" worker threads to finish
         //for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
         while (pool->activeWorkers>0)
         {
+           usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
            //Signal that we can start and wait for finish...
            pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
 
@@ -375,7 +374,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
             } else
             {
              pthread_cond_wait(&pool->completeWorkCondition, &pool->completeWorkMutex);
-             //Waiting forever..
+             //Waiting forever :S..
             }
 
           //fprintf(stderr,"Done Waiting!\n");
