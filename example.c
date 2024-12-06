@@ -10,12 +10,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <unistd.h>
 #include "pthreadWorkerPool.h"
 
-#define NUMBER_OF_WORKER_THREADS 8
-#define NUMBER_OF_ITERATIONS 128
 
 struct workerThreadContext
 {
@@ -81,24 +80,49 @@ int main(int argc, char *argv[])
     //other than showing that this call exists..
     nanoSleepT(1000);
 
-    //We also create one context to be supplied for each thread..
-    struct workerThreadContext context[NUMBER_OF_WORKER_THREADS]= {0};
 
-    if ( threadpoolCreate(&pool,NUMBER_OF_WORKER_THREADS,workerThread,(void *) context) )
+    int numberOfThreads    = 8;
+    int numberOfIterations = 128;
+    if (argc>0)
     {
+      for (int i=0; i<argc; i++)
+      {
+        if (strcmp(argv[i],"--threads")==0)
+                {
+                    numberOfThreads  = atoi(argv[i+1]);
+                    fprintf(stdout,"Threads set to %u\n",numberOfThreads);
+                } else
+        if (strcmp(argv[i],"--iterations")==0)
+                {
+                    numberOfIterations  = atoi(argv[i+1]);
+                    fprintf(stdout,"Iterations set to %u\n",numberOfIterations);
+                }
+      }
+    }
+
+    //We also create one context to be supplied for each thread..
+    struct workerThreadContext * context = 0;
+
+    context = (struct workerThreadContext *) malloc(sizeof(struct workerThreadContext) * numberOfThreads);
+    if (context!=0)
+    {
+     memset(context,0,sizeof(struct workerThreadContext) * numberOfThreads);
+
+     if ( threadpoolCreate(&pool,numberOfThreads,workerThread,(void *) context) )
+     {
         fprintf(stdout,"Worker thread pool created.. \n");
         unsigned int iterationID;
-        for (iterationID=0; iterationID<NUMBER_OF_ITERATIONS; iterationID++)
+        for (iterationID=0; iterationID<numberOfIterations; iterationID++)
         {
             unsigned long poolStartTime = GetTickCountMicrosecondsT();
-            fprintf(stdout,"Iteration %u/%u \n",iterationID+1,NUMBER_OF_ITERATIONS);
+            fprintf(stdout,"Iteration %u/%u \n",iterationID+1,numberOfIterations);
             fprintf(stdout,"----------------------------------------------------------------------------\n");
             threadpoolMainThreadPrepareWorkForWorkers(&pool);
 
             fprintf(stdout,"Main thread preparing tasks..!\n");
             //Prepare random input..
             unsigned int contextID;
-            for (contextID=0; contextID<NUMBER_OF_WORKER_THREADS; contextID++)
+            for (contextID=0; contextID<numberOfThreads; contextID++)
             {
                 context[contextID].computationInput = (float)rand()/(float)(RAND_MAX/1000);
             }
@@ -114,7 +138,7 @@ int main(int argc, char *argv[])
             //threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,10); //wait for up to 10 sec before stopping program execution
 
             fprintf(stdout,"Main thread collecting results..!\n");
-            for (contextID=0; contextID<NUMBER_OF_WORKER_THREADS; contextID++)
+            for (contextID=0; contextID<numberOfThreads; contextID++)
             {
                 fprintf(stdout,"Main thread recovered the output of thread %u | Output value : %f\n",contextID,context[contextID].computationOutput);
             }
@@ -126,6 +150,10 @@ int main(int argc, char *argv[])
 
     fprintf(stdout,"Releasing our thread pool..!\n");
     threadpoolDestroy(&pool);
+
+    free(context);
+    context=0;
+    }
 
     fprintf(stdout,"Done with everything..!\n");
 }
