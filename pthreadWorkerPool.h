@@ -25,7 +25,7 @@ static const char pthreadWorkerPoolVersion[]="0.33";
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
 #define DEBUG_LOG 0
-#define DEBUG_EMULATE_INSTABILITY 1
+#define DEBUG_EMULATE_INSTABILITY 0
 
 /**
  * @brief Structure representing a thread context.
