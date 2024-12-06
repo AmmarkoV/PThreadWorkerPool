@@ -45,7 +45,7 @@ void *workerThread(void * arg)
     {
         work=ctx->computationInput;
 
-        fprintf(stdout,"Thread-%u: Started Working..!\n",ptr->threadID);
+        fprintf(stdout,"Thread-%u: Starting to work..!\n",ptr->threadID);
         unsigned long workerStartTime = GetTickCountMicrosecondsT();
 
         // This is the location where batch processing work will be carried out.
@@ -74,6 +74,13 @@ int main(int argc, char *argv[])
     //Our worker pool ready and clean
     struct workerPool pool={0};
 
+    if (!set_realtime_priority())
+    { fprintf(stdout,"Failed setting real-time priority.. \n"); }
+
+    //Sleep for 1000 nano seconds for no reason
+    //other than showing that this call exists..
+    nanoSleepT(1000);
+
     //We also create one context to be supplied for each thread..
     struct workerThreadContext context[NUMBER_OF_WORKER_THREADS]= {0};
 
@@ -85,6 +92,7 @@ int main(int argc, char *argv[])
         {
             unsigned long poolStartTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Iteration %u/%u \n",iterationID+1,NUMBER_OF_ITERATIONS);
+            fprintf(stdout,"----------------------------------------------------------------------------\n");
             threadpoolMainThreadPrepareWorkForWorkers(&pool);
 
             fprintf(stdout,"Main thread preparing tasks..!\n");
@@ -97,6 +105,7 @@ int main(int argc, char *argv[])
 
             //This function will wait forever for the threads to complete their work
             //it is equivalent to threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,0);
+            fprintf(stdout,"Main thread waiting for workers to do tasks..!\n");
             threadpoolMainThreadWaitForWorkersToFinish(&pool);
 
             //Alternatively the next function has a hard timeout limit, if the wait for a thread takes more time
@@ -111,6 +120,7 @@ int main(int argc, char *argv[])
             }
             unsigned long poolFinishTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Pool of %u threads finished round %u of work in %lu μsec..!\n",pool.numberOfThreads, iterationID, poolFinishTime - poolStartTime);
+            fprintf(stdout,"----------------------------------------------------------------------------\n\n");
         }
     }
 

@@ -25,7 +25,6 @@ static const char pthreadWorkerPoolVersion[]="0.33";
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
 #define DEBUG_LOG 0
-#define DEBUG_EMULATE_INSTABILITY 0
 
 /**
  * @brief Structure representing a thread context.
@@ -68,10 +67,6 @@ struct workerPool
     struct threadContext *workerPoolContext;
     pthread_t * workerPoolIDs;
 };
-
-#if DEBUG_EMULATE_INSTABILITY
- #warning "This build will be unstable, please use it for debugging only"
-#endif // DEBUG_EMULATE_INSTABILITY
 
 #include <stdarg.h>
 static void logmsg(const char *format, ...)
@@ -200,7 +195,7 @@ static int set_realtime_priority()
 
     // Print thread scheduling priority
     fprintf(stderr,"Thread priority is now %u\n",params.sched_priority);
-    return 0;
+    return 1;
 }
 
 
@@ -215,11 +210,6 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
     {
      ctx->threadInitialized = 1;
      pthread_mutex_lock(&ctx->pool->startWorkMutex);
-
-     #if DEBUG_EMULATE_INSTABILITY
-      usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
-     #endif // DEBUG_EMULATE_INSTABILITY
-
      pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
      return 1;
     }
@@ -268,9 +258,8 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
         ctx->pool->mainThreadWaiting = 0;
         pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
 
-        #if DEBUG_EMULATE_INSTABILITY
-         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
-        #endif // DEBUG_EMULATE_INSTABILITY
+        //Should this usleep be removed (?)
+        usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
 
         pthread_mutex_lock(&ctx->pool->completeWorkMutex);
         break;
@@ -339,11 +328,6 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         pool->activeWorkers = pool->numberOfThreads;
 
         pthread_cond_broadcast(&pool->startWorkCondition); //Broadcast starting condition
-
-
-        #if DEBUG_EMULATE_INSTABILITY
-         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
-        #endif // DEBUG_EMULATE_INSTABILITY
 
         //Release lock for starting work that main thread held since threadpoolMainThreadPrepareWorkForWorkers was called
         pthread_mutex_unlock(&pool->startWorkMutex);       //Now start worker threads
