@@ -53,7 +53,7 @@ void *workerThread(void * arg)
         ctx->computationOutput = workStepTwo + ptr->threadID;
         //--------------------------------
         unsigned long workerFinishTime = GetTickCountMicrosecondsT();
-        fprintf(stdout,"Thread-%u: Finished Work in %lu microseconds..!\n",ptr->threadID, workerFinishTime - workerStartTime);
+        fprintf(stdout,"Thread-%u: Finished Work in %lu μsec..!\n",ptr->threadID, workerFinishTime - workerStartTime);
         threadpoolWorkerLoopEnd(ptr);
     }
 
@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
         unsigned int iterationID;
         for (iterationID=0; iterationID<NUMBER_OF_ITERATIONS; iterationID++)
         {
+            unsigned long poolStartTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Iteration %u/%u \n",iterationID+1,NUMBER_OF_ITERATIONS);
             threadpoolMainThreadPrepareWorkForWorkers(&pool);
 
@@ -100,6 +101,8 @@ int main(int argc, char *argv[])
             {
                 fprintf(stdout,"Thread %u / Output : %f\n",contextID,context[contextID].computationOutput);
             }
+            unsigned long poolFinishTime = GetTickCountMicrosecondsT();
+            fprintf(stdout,"Pool of %u threads: Finished Work in %lu μsec..!\n",pool.numberOfThreads, poolFinishTime - poolStartTime);
         }
     }
 

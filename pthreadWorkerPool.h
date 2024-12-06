@@ -250,21 +250,21 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     if (ctx==0) { return 0; }
 
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
-    // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
+    // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" until "MainThreadWaiting" is "TRUE".
 
     //Monitor main thread waiting status and update it!
     pthread_mutex_lock(&ctx->pool->completeWorkMutex);
     while ( !ctx->pool->mainThreadWaiting )
     {
-        usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
-        pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
         //If we are here it is our turn to talk to the main thread!
         ctx->pool->mainThreadWaiting = 0;
+        pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
+        usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
         pthread_mutex_lock(&ctx->pool->completeWorkMutex);
         break;
     }
-    pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
     //--------------------------------------------------
+    pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
 
     //We are no longer an active worker!
     ctx->pool->activeWorkers -=1;
@@ -275,13 +275,10 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     pthread_mutex_lock(&ctx->pool->startWorkMutex);
     pthread_cond_signal(&ctx->pool->completeWorkCondition);
 
-
-    unsigned long workerLoopBlockStartTime = GetTickCountMicrosecondsT();
-
     // Wait for the Main thread to send us the next "StartWorkCondition" broadcast.
     // Be sure to unlock the corresponding mutex immediately so that the other worker threads can exit their waiting state as well.
+    unsigned long workerLoopBlockStartTime = GetTickCountMicrosecondsT();
     pthread_cond_wait(&ctx->pool->startWorkCondition, &ctx->pool->startWorkMutex);
-
     unsigned long workerLoopBlockFinishTime = GetTickCountMicrosecondsT();
 
     fprintf(stderr,"Thread %u / Lag:%lu μsec \n",ctx->threadID , workerLoopBlockFinishTime-workerLoopBlockStartTime);
@@ -351,7 +348,6 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         //for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
         while (pool->activeWorkers>0)
         {
-           usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
            //Signal that we can start and wait for finish...
            pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
 
@@ -379,7 +375,12 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
 
           //fprintf(stderr,"Done Waiting!\n");
           pthread_mutex_unlock(&pool->completeWorkMutex);
+          usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
         }
+
+        pool->mainThreadWaiting = 0;
+
+
         //--------------------------------------------------
         return 1;
     }
