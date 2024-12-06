@@ -23,7 +23,7 @@ extern "C"
 #define DEBUG_LOG 1
 static const char pthreadWorkerPoolVersion[]="0.29";
 
-#define SPIN_SLEEP_TIME_MICROSECONDS 100
+#define SPIN_SLEEP_TIME_MICROSECONDS 120
 
 /**
  * @brief Structure representing a thread context.
@@ -372,9 +372,9 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
              pthread_cond_wait(&pool->completeWorkCondition, &pool->completeWorkMutex);
              //Waiting forever :S..
             }
-
           //fprintf(stderr,"Done Waiting!\n");
           pthread_mutex_unlock(&pool->completeWorkMutex);
+
           usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
         }
 
