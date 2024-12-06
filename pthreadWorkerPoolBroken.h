@@ -15,6 +15,12 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#define NORMAL   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -225,7 +231,7 @@ static void __unlock_complete_work_mutex_for_all_threads(struct workerPool * poo
   logmsg(" Done\n");
 }
 
-static void __broadcast_start_work_conditioin_to_all_threads(struct workerPool * pool)
+static void __broadcast_start_work_condition_to_all_threads(struct workerPool * pool)
 {
   logmsg("Broadcasting start work to all threads..");
   for (int i = 0; i < pool->numberOfThreads; i++) { pthread_cond_broadcast(&pool->startWorkConditions[i]); }
@@ -297,7 +303,7 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     pthread_mutex_t * threadStartWorkMutex    = &ctx->pool->startWorkMutexes[ctx->threadID];
     pthread_mutex_t * threadCompleteWorkMutex = &ctx->pool->completeWorkMutexes[ctx->threadID];
 
-    logmsg("threadpoolWorkerLoopEnd: busy wait %u..\n",ctx->threadID);
+    logmsg(YELLOW "threadpoolWorkerLoopEnd: busy wait %u..\n" NORMAL,ctx->threadID);
     unsigned long workerLoopStartTime = GetTickCountMicrosecondsT();
     ctx->pool->activeWorkers -=1;
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
@@ -352,18 +358,17 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
     {
         pool->work=1;
 
-        //Signal that we can start and wait for finish...
-        __unlock_start_work_mutex_for_all_threads(pool);
+        //We lock the complete work mutex for ourself
         __lock_complete_work_mutex_for_all_threads(pool);
 
-        __broadcast_start_work_conditioin_to_all_threads(pool);
-        //pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
-        //pthread_cond_broadcast(&pool->startWorkCondition); //Broadcast starting condition
-        //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
-        //pthread_mutex_unlock(&pool->startWorkMutex);       //Now start worker threads
+        //unlock the start work mutex that was held by threadpoolMainThreadPrepareWorkForWorkers
+        __unlock_start_work_mutex_for_all_threads(pool);
 
-        //__unlock_complete_work_mutex_for_all_threads(pool);
-        //__unlock_start_work_mutex_for_all_threads(pool);
+        //We unblock all threads stuck waiting on start condition
+        __broadcast_start_work_condition_to_all_threads(pool);
+
+
+
 
         //At this point of the code for the particular iteration all single threaded chains have been executed
         //All parallel threads are running and now we must wait until they are done and gather their output
@@ -382,7 +387,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         //We now wait for "numberOfWorkerThreads" worker threads to finish
         for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
         {
-            logmsg("Waiting thread %u ",numberOfWorkerThreadsToWaitFor);
+            logmsg(RED "Waiting thread %u/%u \n" NORMAL,numberOfWorkerThreadsToWaitFor,pool->numberOfThreads);
             // Before entering a waiting state, set "MainThreadWaiting" to "TRUE" while we still have a lock on the "CompleteMutex".
             // Worker threads will be waiting for this condition to be met before sending "CompleteCondition" signals.
             pool->mainThreadWaiting = 1;
@@ -407,7 +412,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         }
 
         //fprintf(stderr,"Done Waiting!\n");
-        //pthread_mutex_unlock(&pool->completeWorkMutex);
+        logmsg("threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds done waiting unlocking complete work mutex\n");
         __unlock_complete_work_mutex_for_all_threads(pool);
         //--------------------------------------------------
         return 1;
@@ -603,7 +608,7 @@ static int threadpoolDestroy(struct workerPool *pool)
     //pthread_mutex_lock(&pool->startWorkMutex);
     // Set the conditions to stop all threads.
     pool->work = 0;
-    __broadcast_start_work_conditioin_to_all_threads(pool);
+    __broadcast_start_work_condition_to_all_threads(pool);
     __unlock_start_work_mutex_for_all_threads(pool);
     //pthread_cond_broadcast(&pool->startWorkCondition);
     //pthread_mutex_unlock(&pool->startWorkMutex);
