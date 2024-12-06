@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
     //other than showing that this call exists..
     nanoSleepT(1000);
 
-
     int numberOfThreads    = 8;
     int numberOfIterations = 128;
     if (argc>0)
@@ -101,9 +100,8 @@ int main(int argc, char *argv[])
     }
 
     //We also create one context to be supplied for each thread..
-    struct workerThreadContext * context = 0;
+    struct workerThreadContext * context = (struct workerThreadContext *) malloc(sizeof(struct workerThreadContext) * numberOfThreads);
 
-    context = (struct workerThreadContext *) malloc(sizeof(struct workerThreadContext) * numberOfThreads);
     if (context!=0)
     {
      memset(context,0,sizeof(struct workerThreadContext) * numberOfThreads);
