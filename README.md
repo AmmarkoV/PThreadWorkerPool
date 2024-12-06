@@ -18,5 +18,5 @@ make
 After building it to test the example, use 
 
 ```
-./example
+./example --threads 8 --iterations 64
 ```
