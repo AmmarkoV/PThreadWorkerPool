@@ -15,7 +15,7 @@
 #include "pthreadWorkerPool.h"
 
 #define NUMBER_OF_WORKER_THREADS 8
-#define NUMBER_OF_ITERATIONS 16
+#define NUMBER_OF_ITERATIONS 128
 
 struct workerThreadContext
 {
@@ -39,11 +39,12 @@ void *workerThread(void * arg)
 
     threadpoolWorkerInitialWait(ptr);
     unsigned int i;
-    double work=ctx->computationInput;
-    double workStepTwo;
+    double work,workStepTwo;
 
     while (threadpoolWorkerLoopCondition(ptr))
     {
+        work=ctx->computationInput;
+
         fprintf(stdout,"Thread-%u: Started Working..!\n",ptr->threadID);
         unsigned long workerStartTime = GetTickCountMicrosecondsT();
 
@@ -52,7 +53,7 @@ void *workerThread(void * arg)
         //--------------------------------------------------------------
         for ( i = 0; i < 40000000; i++ )
         {
-            work = (double) i + 42.23;
+            work = (double) (work + i + 42.23);
             work = sqrt(work);
             workStepTwo = sqrt(work + (double) i);
         }
