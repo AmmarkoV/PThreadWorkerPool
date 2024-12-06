@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.33";
+static const char pthreadWorkerPoolVersion[]="0.34";
 
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
@@ -89,8 +89,11 @@ static void logmsg(const char *format, ...)
 #include <unistd.h>
 #include <time.h>
 
-
 static unsigned long tickBaseTPMN = 0;
+/**
+ * @brief Return number of clock ticks for our system in microseconds
+ * @return Returns number of ticks in microseconds.
+ */
 static unsigned long GetTickCountMicrosecondsT()
 {
     struct timespec ts;
@@ -123,9 +126,12 @@ static int nanoSleepT(long nanoseconds)
     return nanosleep(&req, &rem);
 }
 
-
-
 #include <sched.h>
+/**
+ * @brief Function to stick the thread that calls the function to a specific CPU core, if the core does not exist it will wrap-around depending on the number of cores.
+ * @param Core we want to associate this thread with.
+ * @return Returns 0 on success, see pthread_setaffinity_np return values for possible failure codes.
+ */
 static int stick_this_thread_to_core(int core_id)
 {
    #if _GNU_SOURCE
@@ -198,7 +204,6 @@ static int set_realtime_priority()
     return 1;
 }
 
-
 /**
  * @brief Function for initializing a worker thread and waiting for start signal.
  * @param ctx Pointer to the thread context.
@@ -215,7 +220,6 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
     }
     return 0;
 }
-
 
 /**
  * @brief Function for checking the loop condition of a worker thread.
@@ -291,7 +295,6 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     return 1;
 }
 
-
 /**
  * @brief Function for preparing work for worker threads by the main thread.
  * @param pool Pointer to the worker pool.
@@ -308,7 +311,6 @@ static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
     }
     return 0;
 }
-
 
 /**
  * @brief Function for waiting worker for threads to finish their task by the main thread.
@@ -392,13 +394,11 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
 
         pthread_mutex_unlock(&pool->completeWorkMutex);
 
-
         //--------------------------------------------------
         return 1;
     }
     return 0;
 }
-
 
 /**
  * @brief Function for waiting worker for threads to finish their task by the main thread. This function will wait forever if something goes wrong with workers
@@ -409,7 +409,6 @@ static int threadpoolMainThreadWaitForWorkersToFinish(struct workerPool * pool)
 {
   return threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(pool,0);
 }
-
 
 /**
  * @brief Function for creating a worker pool.
