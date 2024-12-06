@@ -264,15 +264,18 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
         break;
     }
     //--------------------------------------------------
-    pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
 
-    //We are no longer an active worker!
+    //We are officially no longer an active worker!
     ctx->pool->activeWorkers -=1;
     ctx->pool->completedWorkNumber = ctx->threadID;
 
+    //We are done communicating with Coordinator on our completed work
+    pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
+
+
     // Lock the "StartWorkMutex" before we send out the "CompleteCondition" signal.
     // This way, we can enter a waiting state for the next round before the main thread broadcasts the "StartWorkCondition".
-    pthread_mutex_lock(&ctx->pool->startWorkMutex);
+    pthread_mutex_lock(&ctx->pool->startWorkMutex); //<- This will get released by threadpoolWorkerLoopCondition
     pthread_cond_signal(&ctx->pool->completeWorkCondition);
 
     // Wait for the Main thread to send us the next "StartWorkCondition" broadcast.
