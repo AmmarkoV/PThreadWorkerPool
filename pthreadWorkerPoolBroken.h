@@ -279,12 +279,12 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
      //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
      pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);*/
 
-     logmsg("threadpoolWorkerInitialWait: waiting to lock start mutex of thread %u..\n",ctx->threadID);
+     logmsg("threadpoolWorkerInitialWait: waiting for main thread to release start mutex of thread %u..\n",ctx->threadID);
      pthread_mutex_lock(&ctx->pool->startWorkMutexes[ctx->threadID]);
-     logmsg("threadpoolWorkerInitialWait: waiting for start work condition of thread %u..\n",ctx->threadID);
+     logmsg("threadpoolWorkerInitialWait: waiting for start work condition of thread to be broadcasted %u..\n",ctx->threadID);
      pthread_cond_wait(&ctx->pool->startWorkConditions[ctx->threadID],&ctx->pool->startWorkMutexes[ctx->threadID]);
 
-     logmsg("threadpoolWorkerInitialWait: Starting thread %u..\n",ctx->threadID);
+     logmsg(GREEN "threadpoolWorkerInitialWait: Starting thread %u..\n" NORMAL,ctx->threadID);
      return 1;
     }
     return 0;
@@ -305,21 +305,27 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 
     logmsg(YELLOW "threadpoolWorkerLoopEnd: busy wait %u..\n" NORMAL,ctx->threadID);
     unsigned long workerLoopStartTime = GetTickCountMicrosecondsT();
-    ctx->pool->activeWorkers -=1;
+
+
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
     // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
     while ( 1 )
     {
+        //fprintf(stderr,"%u ",ctx->threadID);
         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
-        pthread_mutex_lock(threadStartWorkMutex);
+        //pthread_mutex_lock(threadStartWorkMutex);
         if ( ctx->pool->mainThreadWaiting )
         {
             // While this thread still has a lock on the "CompleteMutex", set "MainThreadWaiting" to "FALSE", so that the next thread to maintain a lock will be the main thread.
-            ctx->pool->mainThreadWaiting = 0;
+            //ctx->pool->mainThreadWaiting = 0;
             break;
         }
-        pthread_mutex_unlock(threadStartWorkMutex);
     }
+    logmsg(YELLOW "threadpoolWorkerLoopEnd: done busy wait for thread %u..\n" NORMAL,ctx->threadID);
+
+    //Update thread counter
+    ctx->pool->activeWorkers -=1;
+
 
     unsigned long workerLoopBlock2Time = GetTickCountMicrosecondsT();
 
@@ -327,14 +333,18 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 
     // Lock the "StartWorkMutex" before we send out the "CompleteCondition" signal.
     // This way, we can enter a waiting state for the next round before the main thread broadcasts the "StartWorkCondition".
-    pthread_mutex_lock(threadCompleteWorkMutex);
+    //pthread_mutex_lock(threadCompleteWorkMutex);
+    logmsg(YELLOW "threadpoolWorkerLoopEnd: emitting complete work signal for thread %u..\n" NORMAL,ctx->threadID);
     pthread_cond_signal(&ctx->pool->completeWorkConditions[ctx->threadID]);
-    pthread_mutex_unlock(threadCompleteWorkMutex);
+    //pthread_mutex_unlock(threadCompleteWorkMutex);
 
     unsigned long workerLoopBlock3Time = GetTickCountMicrosecondsT();
     // Wait for the Main thread to send us the next "StartWorkCondition" broadcast.
     // Be sure to unlock the corresponding mutex immediately so that the other worker threads can exit their waiting state as well.
+    logmsg(YELLOW "threadpoolWorkerLoopEnd: waiting for new start work Condition %u..\n" NORMAL,ctx->threadID);
     pthread_cond_wait(&ctx->pool->startWorkConditions[ctx->threadID], threadStartWorkMutex);
+    //We are done so we release our mutex to be able to be restarted..
+    pthread_mutex_unlock(threadStartWorkMutex);
 
     unsigned long workerLoopBlockFinishTime = GetTickCountMicrosecondsT();
 
@@ -368,8 +378,6 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         __broadcast_start_work_condition_to_all_threads(pool);
 
 
-
-
         //At this point of the code for the particular iteration all single threaded chains have been executed
         //All parallel threads are running and now we must wait until they are done and gather their output
 
@@ -383,6 +391,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
           ts.tv_sec += timeoutSeconds;
          }
 
+        pool->mainThreadWaiting = 1;
 
         //We now wait for "numberOfWorkerThreads" worker threads to finish
         for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
@@ -390,7 +399,6 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
             logmsg(RED "Waiting thread %u/%u \n" NORMAL,numberOfWorkerThreadsToWaitFor,pool->numberOfThreads);
             // Before entering a waiting state, set "MainThreadWaiting" to "TRUE" while we still have a lock on the "CompleteMutex".
             // Worker threads will be waiting for this condition to be met before sending "CompleteCondition" signals.
-            pool->mainThreadWaiting = 1;
 
             // This is where partial work on the batch data coordination will happen.
             // All of the worker threads will have to finish before we can start the next batch.
@@ -410,6 +418,8 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
              pthread_cond_wait(&pool->completeWorkConditions[numberOfWorkerThreadsToWaitFor], &pool->completeWorkMutexes[numberOfWorkerThreadsToWaitFor]);
             }
         }
+
+        pool->mainThreadWaiting = 0;
 
         //fprintf(stderr,"Done Waiting!\n");
         logmsg("threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds done waiting unlocking complete work mutex\n");
@@ -435,6 +445,7 @@ static int threadpoolMainThreadPrepareWorkForWorkers(struct workerPool * pool)
         //pthread_mutex_lock(&pool->startWorkMutex);
         logmsg("threadpoolMainThreadPrepareWorkForWorkers: locking start for all threads\n");
         __lock_start_work_mutex_for_all_threads(pool);
+        //We hold start work mutexes until we are ready!
 
         logmsg("threadpoolMainThreadPrepareWorkForWorkers: ready\n");
         pool->activeWorkers = pool->numberOfThreads;
