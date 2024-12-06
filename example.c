@@ -15,7 +15,7 @@
 #include "pthreadWorkerPool.h"
 
 #define NUMBER_OF_WORKER_THREADS 32
-#define NUMBER_OF_ITERATIONS 4
+#define NUMBER_OF_ITERATIONS 16
 
 struct workerThreadContext
 {

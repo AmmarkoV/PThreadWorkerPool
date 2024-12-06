@@ -240,7 +240,6 @@ static int threadpoolWorkerLoopCondition(struct threadContext * ctx)
     }
 }
 
-
 /**
  * @brief Function for handling the end of a worker thread's loop.
  * @param ctx Pointer to the thread context.
@@ -252,23 +251,24 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
 
     // Get a lock on "CompleteMutex" and make sure that the main thread is waiting, then set "TheCompletedBatch" to "ThisThreadNumber".  Set "MainThreadWaiting" to "FALSE".
     // If the main thread is not waiting, continue trying to get a lock on "CompleteMutex" unitl "MainThreadWaiting" is "TRUE".
-    while ( 1 )
+
+    //Monitor main thread waiting status and update it!
+    pthread_mutex_lock(&ctx->pool->completeWorkMutex);
+    while ( !ctx->pool->mainThreadWaiting )
     {
         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
-        //pthread_mutex_lock(&ctx->pool->completeWorkMutex);
-        if ( ctx->pool->mainThreadWaiting )
-        {
-            // While this thread still has a lock on the "CompleteMutex", set "MainThreadWaiting" to "FALSE", so that the next thread to maintain a lock will be the main thread.
-            ctx->pool->mainThreadWaiting = 0;
-            break;
-        }
-        //pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
+        pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
+        //If we are here it is our turn to talk to the main thread!
+        ctx->pool->mainThreadWaiting = 0;
+        pthread_mutex_lock(&ctx->pool->completeWorkMutex);
+        break;
     }
+    pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
+    //--------------------------------------------------
 
     //We are no longer an active worker!
     ctx->pool->activeWorkers -=1;
     ctx->pool->completedWorkNumber = ctx->threadID;
-
 
     // Lock the "StartWorkMutex" before we send out the "CompleteCondition" signal.
     // This way, we can enter a waiting state for the next round before the main thread broadcasts the "StartWorkCondition".
