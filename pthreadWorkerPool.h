@@ -20,10 +20,12 @@ extern "C"
 {
 #endif
 
-#define DEBUG_LOG 0
 static const char pthreadWorkerPoolVersion[]="0.31";
 
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
+
+#define DEBUG_LOG 0
+#define DEBUG_EMULATE_INSTABILITY 1
 
 /**
  * @brief Structure representing a thread context.
@@ -35,7 +37,6 @@ struct threadContext
     unsigned int threadID;
     char threadInitialized;
 };
-
 
 /**
  * @brief Structure representing a worker pool.
@@ -68,9 +69,11 @@ struct workerPool
     pthread_t * workerPoolIDs;
 };
 
+#if DEBUG_EMULATE_INSTABILITY
+ #warning "This build will be unstable, please use it for debugging only"
+#endif // DEBUG_EMULATE_INSTABILITY
 
 #include <stdarg.h>
-
 static void logmsg(const char *format, ...)
 {
  #if DEBUG_LOG
@@ -139,7 +142,7 @@ static int stick_this_thread_to_core(int core_id)
 
    cpu_set_t cpuset;
    CPU_ZERO(&cpuset);
-   CPU_SET(core_id, &cpuset);
+   CPU_SET(core_id_mod_cores, &cpuset);
 
    pthread_t current_thread = pthread_self();
    return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
@@ -212,7 +215,11 @@ static int threadpoolWorkerInitialWait(struct threadContext * ctx)
     {
      ctx->threadInitialized = 1;
      pthread_mutex_lock(&ctx->pool->startWorkMutex);
-     //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
+
+     #if DEBUG_EMULATE_INSTABILITY
+      usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
+     #endif // DEBUG_EMULATE_INSTABILITY
+
      pthread_cond_wait(&ctx->pool->startWorkCondition,&ctx->pool->startWorkMutex);
      return 1;
     }
@@ -260,7 +267,11 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
         //If we are here it is our turn to talk to the main thread!
         ctx->pool->mainThreadWaiting = 0;
         pthread_mutex_unlock(&ctx->pool->completeWorkMutex);
-        usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
+
+        #if DEBUG_EMULATE_INSTABILITY
+         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
+        #endif // DEBUG_EMULATE_INSTABILITY
+
         pthread_mutex_lock(&ctx->pool->completeWorkMutex);
         break;
     }
@@ -328,7 +339,11 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
         pool->activeWorkers = pool->numberOfThreads;
 
         pthread_cond_broadcast(&pool->startWorkCondition); //Broadcast starting condition
-        //usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
+
+
+        #if DEBUG_EMULATE_INSTABILITY
+         usleep(SPIN_SLEEP_TIME_MICROSECONDS); //<- Debug to emulate slow/unstable locking
+        #endif // DEBUG_EMULATE_INSTABILITY
 
         //Release lock for starting work that main thread held since threadpoolMainThreadPrepareWorkForWorkers was called
         pthread_mutex_unlock(&pool->startWorkMutex);       //Now start worker threads
@@ -346,15 +361,16 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
           ts.tv_sec += timeoutSeconds;
          }
 
-       //From now on we are waiting for the workers to hand-over their finished jobs..
-       pool->mainThreadWaiting = 1;
 
         //We now wait for "numberOfWorkerThreads" worker threads to finish
         //for (int numberOfWorkerThreadsToWaitFor=0;  numberOfWorkerThreadsToWaitFor<pool->numberOfThreads; numberOfWorkerThreadsToWaitFor++)
+        //Signal that we can start and wait for finish...
+        pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
+        //From now on we are waiting for the workers to hand-over their finished jobs..
+        pool->mainThreadWaiting = 1;
+
         while (pool->activeWorkers>0)
         {
-           //Signal that we can start and wait for finish...
-           pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
 
             // Before entering a waiting state, set "MainThreadWaiting" to "TRUE" while we still have a lock on the "CompleteMutex".
             // Worker threads will be waiting for this condition to be met before sending "CompleteCondition" signals.
@@ -368,7 +384,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
              int ret = pthread_cond_timedwait(&pool->completeWorkCondition, &pool->completeWorkMutex, &ts);
              if (ret == ETIMEDOUT)
                      {
-                        fprintf(stderr, "\n\npthreadWorkerPool: Timeout (%u sec) occurred @ ?/%u, a thread may be stuck.\n", timeoutSeconds,  pool->numberOfThreads);
+                        fprintf(stderr, "\n\npthreadWorkerPool: Timeout (%u sec) occurred @ %u of %u, threads are stuck.\n", timeoutSeconds, pool->activeWorkers, pool->numberOfThreads);
                         // Handle the stuck thread (e.g., attempt to cancel or exit).
                         abort();// We just abort to make sure this becomes a visible failure
                      }
@@ -382,10 +398,15 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
 
           //Give time to worker threads to lock common variables
           usleep(SPIN_SLEEP_TIME_MICROSECONDS);
+
+          //Signal that we can start and wait for finish...
+          pthread_mutex_lock(&pool->completeWorkMutex);      //Make sure worker threads wont fall through after completion
         }
 
         //We finished waiting..
         pool->mainThreadWaiting = 0;
+
+        pthread_mutex_unlock(&pool->completeWorkMutex);
 
 
         //--------------------------------------------------
