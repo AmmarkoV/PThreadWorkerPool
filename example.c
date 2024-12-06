@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
             fprintf(stdout,"Main thread collecting results..!\n");
             for (contextID=0; contextID<NUMBER_OF_WORKER_THREADS; contextID++)
             {
-                fprintf(stdout,"Thread %u / Output : %f\n",contextID,context[contextID].computationOutput);
+                fprintf(stdout,"Main thread recovered the output of thread %u | Output value : %f\n",contextID,context[contextID].computationOutput);
             }
             unsigned long poolFinishTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Pool of %u threads finished round %u of work in %lu μsec..!\n",pool.numberOfThreads, iterationID, poolFinishTime - poolStartTime);
