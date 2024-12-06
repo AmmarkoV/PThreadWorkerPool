@@ -126,6 +126,7 @@ static int nanoSleepT(long nanoseconds)
 #include <sched.h>
 static int stick_this_thread_to_core(int core_id)
 {
+   #if _GNU_SOURCE
    int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
    int core_id_mod_cores = core_id % num_cores;
 
@@ -138,6 +139,10 @@ static int stick_this_thread_to_core(int core_id)
 
    pthread_t current_thread = pthread_self();
    return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
+   #else
+    fprintf(stderr,"Sticking threads to cores not supported without GNU source declared\n");
+    return EFAULT;
+   #endif // _GNU_SOURCE
 }
 
 /**
