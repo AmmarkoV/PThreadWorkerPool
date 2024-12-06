@@ -20,8 +20,8 @@ extern "C"
 {
 #endif
 
-#define DEBUG_LOG 1
-static const char pthreadWorkerPoolVersion[]="0.29";
+#define DEBUG_LOG 0
+static const char pthreadWorkerPoolVersion[]="0.31";
 
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
@@ -145,6 +145,7 @@ static int stick_this_thread_to_core(int core_id)
    return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
    #else
     fprintf(stderr,"Cannot stick thread to core without GNU source extensions during compilation\n");
+    return EFAULT;
    #endif
 }
 
@@ -284,7 +285,8 @@ static int threadpoolWorkerLoopEnd(struct threadContext * ctx)
     pthread_cond_wait(&ctx->pool->startWorkCondition, &ctx->pool->startWorkMutex);
     unsigned long workerLoopBlockFinishTime = GetTickCountMicrosecondsT();
 
-    fprintf(stderr,"Thread %u / Lag:%lu μsec \n",ctx->threadID , workerLoopBlockFinishTime-workerLoopBlockStartTime);
+    //report Resyncing lag with the rest of the thread pool
+    logmsg("Thread %u | Re-Sync Lag: %lu μsec \n",ctx->threadID , workerLoopBlockFinishTime-workerLoopBlockStartTime);
 
     return 1;
 }
@@ -344,7 +346,7 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
           ts.tv_sec += timeoutSeconds;
          }
 
-       //
+       //From now on we are waiting for the workers to hand-over their finished jobs..
        pool->mainThreadWaiting = 1;
 
         //We now wait for "numberOfWorkerThreads" worker threads to finish
@@ -378,9 +380,11 @@ static int threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(struct worke
           //fprintf(stderr,"Done Waiting!\n");
           pthread_mutex_unlock(&pool->completeWorkMutex);
 
-          usleep(SPIN_SLEEP_TIME_MICROSECONDS); //Make this spin slower..
+          //Give time to worker threads to lock common variables
+          usleep(SPIN_SLEEP_TIME_MICROSECONDS);
         }
 
+        //We finished waiting..
         pool->mainThreadWaiting = 0;
 
 

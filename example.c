@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include "pthreadWorkerPool.h"
 
-#define NUMBER_OF_WORKER_THREADS 32
+#define NUMBER_OF_WORKER_THREADS 8
 #define NUMBER_OF_ITERATIONS 16
 
 struct workerThreadContext
@@ -34,6 +34,9 @@ void *workerThread(void * arg)
     struct workerThreadContext * ctx = &contextArray[ptr->threadID];
     //---------------------------------------------------------------
 
+    if (stick_this_thread_to_core(ptr->threadID)!=0)
+       { fprintf(stderr,"We where not able to pin thread %u to a specific core\n",ptr->threadID); }
+
     threadpoolWorkerInitialWait(ptr);
     unsigned int i;
     double work=ctx->computationInput;
@@ -41,9 +44,12 @@ void *workerThread(void * arg)
 
     while (threadpoolWorkerLoopCondition(ptr))
     {
-        fprintf(stdout,"Thread-%u: Started Work..!\n",ptr->threadID);
+        fprintf(stdout,"Thread-%u: Started Working..!\n",ptr->threadID);
         unsigned long workerStartTime = GetTickCountMicrosecondsT();
-        // This is the location where batch processing work will be carried out.  Right now it is busy-work.
+
+        // This is the location where batch processing work will be carried out.
+        // Emulate performing some sort of computation.. Do busy-work.
+        //--------------------------------------------------------------
         for ( i = 0; i < 40000000; i++ )
         {
             work = (double) i + 42.23;
@@ -51,9 +57,10 @@ void *workerThread(void * arg)
             workStepTwo = sqrt(work + (double) i);
         }
         ctx->computationOutput = workStepTwo + ptr->threadID;
-        //--------------------------------
+        //--------------------------------------------------------------
+
         unsigned long workerFinishTime = GetTickCountMicrosecondsT();
-        fprintf(stdout,"Thread-%u: Finished Work in %lu μsec..!\n",ptr->threadID, workerFinishTime - workerStartTime);
+        fprintf(stdout,"Thread-%u: Finished our part of work in %lu μsec..!\n",ptr->threadID, workerFinishTime - workerStartTime);
         threadpoolWorkerLoopEnd(ptr);
     }
 
@@ -102,10 +109,12 @@ int main(int argc, char *argv[])
                 fprintf(stdout,"Thread %u / Output : %f\n",contextID,context[contextID].computationOutput);
             }
             unsigned long poolFinishTime = GetTickCountMicrosecondsT();
-            fprintf(stdout,"Pool of %u threads: Finished Work in %lu μsec..!\n",pool.numberOfThreads, poolFinishTime - poolStartTime);
+            fprintf(stdout,"Pool of %u threads finished round %u of work in %lu μsec..!\n",pool.numberOfThreads, iterationID, poolFinishTime - poolStartTime);
         }
     }
 
-    fprintf(stdout,"Done with everything..!\n");
+    fprintf(stdout,"Releasing our thread pool..!\n");
     threadpoolDestroy(&pool);
+
+    fprintf(stdout,"Done with everything..!\n");
 }
