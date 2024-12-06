@@ -41,6 +41,8 @@ void *workerThread(void * arg)
 
     while (threadpoolWorkerLoopCondition(ptr))
     {
+        fprintf(stdout,"Thread-%u: Started Work..!\n",ptr->threadID);
+        unsigned long workerStartTime = GetTickCountMicrosecondsT();
         // This is the location where batch processing work will be carried out.  Right now it is busy-work.
         for ( i = 0; i < 40000000; i++ )
         {
@@ -50,6 +52,8 @@ void *workerThread(void * arg)
         }
         ctx->computationOutput = workStepTwo + ptr->threadID;
         //--------------------------------
+        unsigned long workerFinishTime = GetTickCountMicrosecondsT();
+        fprintf(stdout,"Thread-%u: Finished Work in %lu microseconds..!\n",ptr->threadID, workerFinishTime - workerStartTime);
         threadpoolWorkerLoopEnd(ptr);
     }
 
@@ -85,7 +89,7 @@ int main(int argc, char *argv[])
             //This function will wait forever for the threads to complete their work
             //it is equivalent to threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,0);
             threadpoolMainThreadWaitForWorkersToFinish(&pool);
-             
+
             //Alternatively the next function has a hard timeout limit, if the wait for a thread takes more time
             //the library will abort, terminating the execution of the process to avoid deadlocks..
             //the given limit should be large and this function exists to prevent deadlocks in a very noticeable way
