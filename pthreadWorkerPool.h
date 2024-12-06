@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.31";
+static const char pthreadWorkerPoolVersion[]="0.33";
 
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
