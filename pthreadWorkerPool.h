@@ -204,6 +204,27 @@ static int set_realtime_priority()
     return 1;
 }
 
+
+/**
+ * @brief Function to drop root privileges after setting priority.
+ * @return Returns 0 on success, -1 on failure.
+ */
+static int drop_privileges()
+{
+    uid_t uid = getuid();  // Get the real user ID
+    gid_t gid = getgid();  // Get the real group ID
+
+    if (setgid(gid) != 0 || setuid(uid) != 0)
+    {
+        fprintf(stderr, "Failed to drop privileges\n");
+        return -1;
+    }
+
+    fprintf(stderr, "Privileges dropped successfully\n");
+    return 0;
+}
+
+
 /**
  * @brief Function for initializing a worker thread and waiting for start signal.
  * @param ctx Pointer to the thread context.
