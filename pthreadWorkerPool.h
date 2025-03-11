@@ -126,6 +126,7 @@ static int nanoSleepT(long nanoseconds)
     return nanosleep(&req, &rem);
 }
 
+#include <pwd.h>
 #include <sched.h>
 /**
  * @brief Function to stick the thread that calls the function to a specific CPU core, if the core does not exist it will wrap-around depending on the number of cores.
@@ -223,6 +224,36 @@ static int set_process_nice(int priority)
     fprintf(stderr, "Process priority (nice value) set to %d\n", priority);
     return 1;
 }
+
+
+
+/**
+ * @brief Function to increase the process priority using sudo and renice.
+ * @param priority The nice value to set (-20 for highest priority, 19 for lowest)
+ * @return Returns 0 on success, -1 on failure.
+ */
+static int elevate_nice_priority(int priority)
+{
+    pid_t pid = getpid();  // Get current process ID
+
+    // Construct command: sudo renice -n <priority> -p <pid>
+    char command[128];
+    snprintf(command, sizeof(command), "sudo renice -n %d -p %d", priority, pid);
+
+    fprintf(stderr, "Executing command: %s\n", command);
+
+    // Execute the system command
+    int ret = system(command);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Failed to elevate process priority\n");
+        return -1;
+    }
+
+    fprintf(stderr, "Process priority successfully elevated to %d\n", priority);
+    return 0;
+}
+
 
 
 /**
