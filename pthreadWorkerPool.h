@@ -247,11 +247,11 @@ static int elevate_nice_priority(int priority)
     if (ret != 0)
     {
         fprintf(stderr, "Failed to elevate process priority\n");
-        return -1;
+        return 0;
     }
 
     fprintf(stderr, "Process priority successfully elevated to %d\n", priority);
-    return 0;
+    return 1;
 }
 
 
