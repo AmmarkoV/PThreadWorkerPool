@@ -237,10 +237,10 @@ static int elevate_nice_priority(int priority)
     pid_t pid = getpid();  // Get current process ID
 
     // Construct command: sudo renice -n <priority> -p <pid>
-    char command[128];
+    char command[128]={0};
     snprintf(command, sizeof(command), "sudo renice -n %d -p %d", priority, pid);
 
-    fprintf(stderr, "Executing command: %s\n", command);
+    fprintf(stderr, "Please give password to execute command: %s\n", command);
 
     // Execute the system command
     int ret = system(command);
