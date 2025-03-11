@@ -205,24 +205,78 @@ static int set_realtime_priority()
 }
 
 
+
 /**
- * @brief Function to drop root privileges after setting priority.
+ * @brief Function to change the priority of the process using `nice()`
+ * @param priority The niceness value to set (-20 for highest priority, 19 for lowest)
  * @return Returns 0 on success, -1 on failure.
  */
-static int drop_privileges()
+static int set_process_nice(int priority)
 {
-    uid_t uid = getuid();  // Get the real user ID
-    gid_t gid = getgid();  // Get the real group ID
-
-    if (setgid(gid) != 0 || setuid(uid) != 0)
+    int ret = nice(priority);
+    if (ret == -1 && errno != 0)  // Check for errors
     {
-        fprintf(stderr, "Failed to drop privileges\n");
-        return -1;
+        perror("Failed to change process priority");
+        return 0;
     }
 
-    fprintf(stderr, "Privileges dropped successfully\n");
-    return 0;
+    fprintf(stderr, "Process priority (nice value) set to %d\n", priority);
+    return 1;
 }
+
+
+/**
+ * @brief Function for setting the real-time priority of a thread.
+ * @return Returns 0 on success, -1 on failure.
+ */
+static int set_realtime_thread_priority()
+{
+    int ret;
+
+    // We'll operate on the currently running thread.
+    pthread_t this_thread = pthread_self();
+    // struct sched_param is used to store the scheduling priority
+    struct sched_param params;
+
+    // We'll set the priority to the maximum.
+    params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+
+    fprintf(stderr,"Trying to set thread realtime prio = %u \n",params.sched_priority);
+
+    // Attempt to set thread real-time priority to the SCHED_FIFO policy
+    ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
+    if (ret != 0)
+    {
+        // Print the error
+        fprintf(stderr,"Failed setting thread realtime priority\n");
+        return 0;
+    }
+
+    // Now verify the change in thread priority
+    int policy = 0;
+    ret = pthread_getschedparam(this_thread, &policy, &params);
+    if (ret != 0)
+    {
+        fprintf(stderr,"Couldn't retrieve real-time scheduling paramers\n");
+        return 0;
+    }
+
+    // Check the correct policy was applied
+    if(policy != SCHED_FIFO)
+    {
+        fprintf(stderr,"Scheduling is NOT SCHED_FIFO!\n");
+    }
+    else
+    {
+        fprintf(stderr,"SCHED_FIFO OK\n");
+    }
+
+    // Print thread scheduling priority
+    fprintf(stderr,"Thread priority is now %u\n",params.sched_priority);
+    return 1;
+}
+
+
 
 
 /**

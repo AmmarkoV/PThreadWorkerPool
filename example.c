@@ -73,8 +73,11 @@ int main(int argc, char *argv[])
     //Our worker pool ready and clean
     struct workerPool pool={0};
 
-    if (!set_realtime_priority())
-    { fprintf(stdout,"Failed setting real-time priority.. \n"); }
+    if (!set_process_nice(-11))
+    { fprintf(stdout,"Failed setting real-time process priority.. \n"); }
+
+    if (!set_realtime_thread_priority())
+    { fprintf(stdout,"Failed setting real-time thread priority.. \n"); }
 
     //Sleep for 1000 nano seconds for no reason
     //other than showing that this call exists..
