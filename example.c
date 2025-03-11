@@ -98,7 +98,13 @@ int main(int argc, char *argv[])
                 {
                     numberOfIterations  = atoi(argv[i+1]);
                     fprintf(stdout,"Iterations set to %u\n",numberOfIterations);
+                } else
+        if (strcmp(argv[i],"--rt")==0)
+                {
+                    elevate_nice_priority(-20);
                 }
+
+
       }
     }
 
