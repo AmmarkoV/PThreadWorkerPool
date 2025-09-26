@@ -6,7 +6,10 @@
  */
 
 //Can also be compiled using :
-//gcc -O3 example.c -pthread -lm -o example
+//   gcc -O3 example.c -pthread -lm -o example
+
+//After being compiled you can run it e.g. using :
+//   ./example --threads 8 --iterations 64
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -85,8 +88,16 @@ int main(int argc, char *argv[])
     //other than showing that this call exists..
     nanoSleepT(1000);
 
-    int numberOfThreads    = 8;
     int numberOfIterations = 128;
+    int numberOfThreads    = 8;
+
+    //Attempt to comply with an OMP_NUM_THREADS environment variable if it exists
+    if (get_omp_num_threads_from_env()!=0)
+       {
+         numberOfThreads = get_omp_num_threads_from_env();
+         fprintf(stdout,"Number of threads set to %u using OMP_NUM_THREADS environment variable\n",numberOfThreads);
+       }
+
     if (argc>0)
     {
       for (int i=0; i<argc; i++)
@@ -94,12 +105,12 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i],"--threads")==0)
                 {
                     numberOfThreads  = atoi(argv[i+1]);
-                    fprintf(stdout,"Threads set to %u\n",numberOfThreads);
+                    fprintf(stdout,"Number of threads set to %u\n",numberOfThreads);
                 } else
         if (strcmp(argv[i],"--iterations")==0)
                 {
                     numberOfIterations  = atoi(argv[i+1]);
-                    fprintf(stdout,"Iterations set to %u\n",numberOfIterations);
+                    fprintf(stdout,"Number of iterations set to %u\n",numberOfIterations);
                 } else
         if (strcmp(argv[i],"--rt")==0)
                 {

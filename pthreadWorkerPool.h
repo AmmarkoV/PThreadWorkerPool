@@ -20,7 +20,7 @@ extern "C"
 {
 #endif
 
-static const char pthreadWorkerPoolVersion[]="0.34";
+static const char pthreadWorkerPoolVersion[]="0.36";
 
 #define SPIN_SLEEP_TIME_MICROSECONDS 120
 
@@ -308,6 +308,20 @@ static int set_realtime_thread_priority()
 }
 
 
+
+
+/**
+ * @brief Function for retrieving the OMP_NUM_THREADS
+ * @return Returns the number of threads or 0 if OMP_NUM_THREADS is not declared.
+ */
+static int get_omp_num_threads_from_env(void) 
+{
+    const char *env = getenv("OMP_NUM_THREADS");
+    if (env != NULL) {
+        return atoi(env);  // convert string to int
+    }
+    return 0;  // not set
+}
 
 
 /**
