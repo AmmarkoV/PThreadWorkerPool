@@ -7,7 +7,7 @@ MAINS  := $(addsuffix .o, $(TARGETS) )
 OBJ    := $(MAINS)
 DEPS   := pthreadWorkerPool.h
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: $(TARGETS)
 
@@ -19,3 +19,6 @@ $(OBJ): %.o : %.c $(DEPS)
 
 $(TARGETS): % : $(filter-out $(MAINS), $(OBJ)) %.o
 	$(CC) -D_GNU_SOURCE -o $@ $(LIBS) $^ $(CCFLAGS) $(LDFLAGS)
+
+test: $(TARGETS)
+	./example --threads 8 --iterations 64

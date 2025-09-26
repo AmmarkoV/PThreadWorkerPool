@@ -19,5 +19,11 @@ make
 After building it to test the example, use 
 
 ```
+make test
+```
+
+OR
+
+```
 ./example --threads 8 --iterations 64
 ```
