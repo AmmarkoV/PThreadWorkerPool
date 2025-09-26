@@ -13,6 +13,8 @@
 #include <string.h>
 #include <math.h>
 #include <unistd.h>
+
+//pthreadWorkerPool.h contains everything we need!
 #include "pthreadWorkerPool.h"
 
 
@@ -124,17 +126,19 @@ int main(int argc, char *argv[])
             unsigned long poolStartTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Iteration %u/%u \n",iterationID+1,numberOfIterations);
             fprintf(stdout,"----------------------------------------------------------------------------\n");
+
+            //We signal to the library that we are now preparing work for workers
             threadpoolMainThreadPrepareWorkForWorkers(&pool);
 
-            fprintf(stdout,"Main thread preparing tasks..!\n");
-            //Prepare random input..
+            fprintf(stdout,"Main thread preparing tasks for each worker thread..!\n");
+            //We actually prepare some random input for each thread to compute..
             unsigned int contextID;
             for (contextID=0; contextID<numberOfThreads; contextID++)
             {
                 context[contextID].computationInput = (float)rand()/(float)(RAND_MAX/1000);
             }
 
-            //This function will wait forever for the threads to complete their work
+            //After preparing the work they need to do the next function will start the threads and wait forever for them to complete their work
             //it is equivalent to threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,0);
             fprintf(stdout,"Main thread waiting for workers to do tasks..!\n");
             threadpoolMainThreadWaitForWorkersToFinish(&pool);
@@ -144,11 +148,16 @@ int main(int argc, char *argv[])
             //the given limit should be large and this function exists to prevent deadlocks in a very noticeable way
             //threadpoolMainThreadWaitForWorkersToFinishTimeoutSeconds(&pool,10); //wait for up to 10 sec before stopping program execution
 
+            //At this point the threads have finished and are idle!
+            //Let's collect their work!
+
             fprintf(stdout,"Main thread collecting results..!\n");
             for (contextID=0; contextID<numberOfThreads; contextID++)
             {
                 fprintf(stdout,"Main thread recovered the output of thread %u | Output value : %f\n",contextID,context[contextID].computationOutput);
             }
+
+            //Also display stats for execution
             unsigned long poolFinishTime = GetTickCountMicrosecondsT();
             fprintf(stdout,"Pool of %u threads finished round %u of work in %lu μsec..!\n",pool.numberOfThreads, iterationID, poolFinishTime - poolStartTime);
             fprintf(stdout,"----------------------------------------------------------------------------\n\n");

@@ -11,7 +11,8 @@ To build it use
 
 ```
 sudo apt-get install build-essential libpthread-stubs0-dev
-
+git clone https://github.com/AmmarkoV/PThreadWorkerPool
+cd PThreadWorkerPool
 make
 ```
 
